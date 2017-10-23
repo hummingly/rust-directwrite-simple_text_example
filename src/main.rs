@@ -232,13 +232,9 @@ unsafe extern "system" fn wndproc(
     wparam: WPARAM,
     lparam: LPARAM,
 ) -> LRESULT {
-    let app_ptr = GetWindowLongPtrW(hwnd, 0);
-    let app: &mut SimpleText = &mut *(app_ptr as *mut SimpleText);
+    let app_ptr = GetWindowLongPtrW(hwnd, 0) as *mut SimpleText;
+    let mut app: &mut SimpleText = &mut *(app_ptr as *mut SimpleText);
     match message {
-        WM_CREATE => {
-            SetWindowLongPtrW(hwnd, 0, 0);
-            1
-        }
         WM_PAINT => {
             set_d2d_resources(app);
             if on_paint(app) == D2DERR_RECREATE_TARGET {
@@ -246,7 +242,23 @@ unsafe extern "system" fn wndproc(
             }
             0
         }
+        WM_SIZE => {
+            let width = GET_X_LPARAM(lparam);
+            let height = GET_Y_LPARAM(lparam);
+
+            if !app_ptr.is_null() {
+                let render_size = D2D_SIZE_U {
+                    width: width as u32,
+                    height: height as u32,
+                };
+
+                let render = &mut *app.render_target;
+                render.Resize(&render_size);
+            }
+            0
+        }
         WM_DESTROY => {
+            release_resources(&mut app);
             PostQuitMessage(0);
             1
         }
@@ -257,7 +269,7 @@ unsafe extern "system" fn wndproc(
 //WINDOW CREATION
 pub fn init_class() {
     unsafe {
-        let class = "direct2d_example".to_wide();
+        let class = "directwrite_example".to_wide();
         let wndcl = WNDCLASSEXW {
             cbSize: mem::size_of::<WNDCLASSEXW>() as UINT32,
             style: CS_HREDRAW | CS_VREDRAW,
@@ -319,7 +331,7 @@ fn main() {
     unsafe {
         let mut app = SimpleText::initialize();
 
-        let class = "direct2d_example".to_wide();
+        let class = "directwrite_example".to_wide();
         let window = "Hello World!".to_wide();
 
         init_class();
@@ -335,6 +347,5 @@ fn main() {
             TranslateMessage(&msg as *const MSG);
             DispatchMessageW(&msg as *const MSG);
         }
-        release_resources(&mut app);
     }
 }
