@@ -339,7 +339,6 @@ fn main() {
         set_window(&mut app);
 
         create_directx_resources(&mut app);
-        set_d2d_resources(&mut app);
 
         let mut msg: MSG = WinStruct::default();
 
